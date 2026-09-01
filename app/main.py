@@ -29,30 +29,37 @@ def print_banner() -> None:
 """)
 
 
+from ai.planner import process_instruction, reset_chat
+from voice.speech_to_text import listen_and_transcribe
+from voice.wake_word import strip_wake_word
+
 def print_help() -> None:
     print("""
-Available test commands (Phase 1):
+Available commands (Phase 3):
+  ask <text>              — Send a natural language instruction to Atlas
+  voice                   — Activate microphone to speak an instruction
+  reset                   — Reset the agent's conversation memory
+  
+  -- Manual Tool Tests --
   screenshot              — Take a screenshot
   click <x> <y>           — Click at coordinates
   type <text>             — Type text
-  key <key>               — Press a key (e.g. key enter)
-  hotkey <k1> <k2> ...    — Press a hotkey (e.g. hotkey ctrl c)
-  shortcut <name>         — Named shortcut (e.g. shortcut copy)
+  key <key>               — Press a key
+  hotkey <k1> <k2> ...    — Press a hotkey
+  shortcut <name>         — Named shortcut
   scroll up/down [n]      — Scroll
   move <x> <y>            — Move mouse
   open <app>              — Open an application
   url <url>               — Open a URL
-  clipboard read          — Read clipboard
-  clipboard write <text>  — Write to clipboard
+  clipboard read/write    — Clipboard operations
   windows                 — List open windows
   switch <title>          — Switch to window by title
   state                   — Show agent state
   quit                    — Exit
 """)
 
-
 def handle_command(cmd: str) -> None:
-    """Parse and execute a test command from the REPL."""
+    """Parse and execute a command from the REPL."""
     parts = cmd.strip().split(maxsplit=1)
     if not parts:
         return
@@ -60,6 +67,26 @@ def handle_command(cmd: str) -> None:
     rest = parts[1] if len(parts) > 1 else ""
 
     try:
+        if verb == "ask":
+            if rest:
+                process_instruction(rest)
+            else:
+                print("Usage: ask <your natural language instruction>")
+                
+        elif verb == "voice":
+            print("🎤 Listening... (Speak now)")
+            transcription = listen_and_transcribe(timeout=5, phrase_time_limit=15)
+            if transcription:
+                clean_text = strip_wake_word(transcription)
+                print(f"You said: {clean_text}")
+                if clean_text:
+                    process_instruction(clean_text)
+            else:
+                print("Could not hear or understand speech.")
+                
+        elif verb == "reset":
+            reset_chat()
+            print("✓ Conversation memory reset.")
         if verb == "screenshot":
             execute_tool("take_screenshot", {"save": True})
             print("✓ Screenshot saved to screenshots/")
