@@ -2,8 +2,10 @@
 Atlas-Modified: app/main.py
 Entry point for the Atlas agent.
 
-Phase 1: Simple REPL that lets you test computer control tools directly.
-Later phases will replace this with the full voice → AI → computer loop.
+Phase 7: Full Vision-Grounded Computer Use Agent.
+- 'do <task>'   → Vision loop: screenshot → Gemini → tool → screenshot → verify
+- 'ask <task>'  → Text-only loop (no screenshot, for quick tests)
+- 'voice'       → Microphone → STT → vision loop
 """
 
 import logging
@@ -12,54 +14,65 @@ import sys
 from app import config
 from app.state import agent_state, AgentMode
 from tools.executor import execute_tool, PermissionDeniedError, ExecutionError
+from ai.planner import process_instruction, reset_chat
+from ai.computer_use import computer_use_agent
+from voice.speech_to_text import listen_and_transcribe
+from voice.wake_word import strip_wake_word
+from voice.text_to_speech import speak
 
 logger = logging.getLogger(__name__)
 
 
 def print_banner() -> None:
     print("""
-╔══════════════════════════════════════════════════════╗
-║         Atlas-Modified — Computer Agent              ║
-║   Voice-Controlled General-Purpose Desktop Agent     ║
-║                                                      ║
-║   Phase 1: Computer Control Foundation               ║
-║   Type 'help' for available commands.                ║
-║   Type 'quit' or press Ctrl+C to exit.               ║
-╚══════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════╗
+║         Atlas-Modified — Voice Computer Agent v0.7           ║
+║   Voice-Controlled General-Purpose Desktop Agent             ║
+║                                                              ║
+║  'do <task>'   → AI sees your screen and acts               ║
+║  'voice'       → Speak your instruction (microphone)         ║
+║  'ask <task>'  → Text-only AI (no screen capture)            ║
+║  Type 'help' for all commands.  Type 'quit' to exit.         ║
+╚══════════════════════════════════════════════════════════════╝
 """)
 
-
-from ai.planner import process_instruction, reset_chat
-from voice.speech_to_text import listen_and_transcribe
-from voice.wake_word import strip_wake_word
 
 def print_help() -> None:
     print("""
-Available commands (Phase 3):
-  ask <text>              — Send a natural language instruction to Atlas
-  voice                   — Activate microphone to speak an instruction
-  reset                   — Reset the agent's conversation memory
-  
-  -- Manual Tool Tests --
-  screenshot              — Take a screenshot
-  click <x> <y>           — Click at coordinates
-  type <text>             — Type text
-  key <key>               — Press a key
-  hotkey <k1> <k2> ...    — Press a hotkey
-  shortcut <name>         — Named shortcut
-  scroll up/down [n]      — Scroll
-  move <x> <y>            — Move mouse
-  open <app>              — Open an application
-  url <url>               — Open a URL
-  clipboard read/write    — Clipboard operations
-  windows                 — List open windows
-  switch <title>          — Switch to window by title
-  state                   — Show agent state
-  quit                    — Exit
+═══════════════ Atlas Command Reference ═══════════════
+
+  AI Agent Commands:
+    do <instruction>      → Full vision loop (RECOMMENDED)
+                            Atlas sees screen, acts, verifies
+    voice                 → Speak instruction via microphone
+    ask <instruction>     → Text-only Gemini (no screenshot)
+    reset                 → Reset AI conversation context
+
+  Direct Computer Control:
+    screenshot            — Save a screenshot to disk
+    click <x> <y>         — Click at coordinates
+    move <x> <y>          — Move mouse to coordinates
+    type <text>           — Type text
+    key <key>             — Press a key (enter, esc, f5…)
+    hotkey <k1> <k2>      — Hotkey (e.g. hotkey ctrl c)
+    shortcut <name>       — Named shortcut (copy, paste…)
+    scroll up/down [n]    — Scroll the page
+    open <app>            — Launch an application
+    url <url>             — Open URL in default browser
+    clipboard read        — Read clipboard contents
+    clipboard write <txt> — Write to clipboard
+    windows               — List open windows
+    switch <title>        — Focus a window by title
+
+  System:
+    state                 — Show agent state
+    help                  — Show this help
+    quit                  — Exit Atlas
 """)
 
+
 def handle_command(cmd: str) -> None:
-    """Parse and execute a command from the REPL."""
+    """Parse and dispatch a REPL command."""
     parts = cmd.strip().split(maxsplit=1)
     if not parts:
         return
@@ -67,12 +80,19 @@ def handle_command(cmd: str) -> None:
     rest = parts[1] if len(parts) > 1 else ""
 
     try:
-        if verb == "ask":
+        # ── AI Vision Loop (Phase 7) ──────────────────────────────────────────
+        if verb == "do":
             if rest:
-                process_instruction(rest)
+                agent_state.set_mode(AgentMode.ACTING)
+                print(f"🤖 Starting vision task: {rest}")
+                result = computer_use_agent.run(rest)
+                agent_state.set_mode(AgentMode.IDLE)
+                print(f"\n✅ Atlas: {result}")
+                speak(result)
             else:
-                print("Usage: ask <your natural language instruction>")
-                
+                print("Usage: do <your instruction>")
+
+        # ── Voice Input (Phase 2+7) ───────────────────────────────────────────
         elif verb == "voice":
             print("🎤 Listening... (Speak now)")
             transcription = listen_and_transcribe(timeout=5, phrase_time_limit=15)
@@ -80,14 +100,29 @@ def handle_command(cmd: str) -> None:
                 clean_text = strip_wake_word(transcription)
                 print(f"You said: {clean_text}")
                 if clean_text:
-                    process_instruction(clean_text)
+                    agent_state.set_mode(AgentMode.ACTING)
+                    result = computer_use_agent.run(clean_text)
+                    agent_state.set_mode(AgentMode.IDLE)
+                    print(f"\n✅ Atlas: {result}")
+                    speak(result)
             else:
                 print("Could not hear or understand speech.")
-                
+
+        # ── Text-Only AI Loop (Phase 3, no screenshot) ─────────────────────────
+        elif verb == "ask":
+            if rest:
+                process_instruction(rest)
+            else:
+                print("Usage: ask <instruction>")
+
+        # ── Reset AI memory ───────────────────────────────────────────────────
         elif verb == "reset":
             reset_chat()
-            print("✓ Conversation memory reset.")
-        if verb == "screenshot":
+            computer_use_agent.reset()
+            print("✓ Conversation context reset.")
+
+        # ── Direct tool commands ──────────────────────────────────────────────
+        elif verb == "screenshot":
             execute_tool("take_screenshot", {"save": True})
             print("✓ Screenshot saved to screenshots/")
 
@@ -99,10 +134,18 @@ def handle_command(cmd: str) -> None:
             else:
                 print("Usage: click <x> <y>")
 
+        elif verb == "move":
+            coords = rest.split()
+            if len(coords) >= 2:
+                execute_tool("mouse_move", {"x": int(coords[0]), "y": int(coords[1])})
+                print(f"✓ Mouse moved to ({coords[0]}, {coords[1]})")
+            else:
+                print("Usage: move <x> <y>")
+
         elif verb == "type":
             if rest:
                 execute_tool("type_text", {"text": rest})
-                print(f"✓ Typed: {rest[:40]}...")
+                print(f"✓ Typed: {rest[:40]}")
             else:
                 print("Usage: type <text>")
 
@@ -138,14 +181,6 @@ def handle_command(cmd: str) -> None:
                 execute_tool("scroll_down", {"clicks": clicks})
             print(f"✓ Scrolled {direction} {clicks} clicks")
 
-        elif verb == "move":
-            coords = rest.split()
-            if len(coords) >= 2:
-                execute_tool("mouse_move", {"x": int(coords[0]), "y": int(coords[1])})
-                print(f"✓ Mouse moved to ({coords[0]}, {coords[1]})")
-            else:
-                print("Usage: move <x> <y>")
-
         elif verb == "open":
             if rest:
                 ok = execute_tool("open_application", {"name": rest})
@@ -168,7 +203,7 @@ def handle_command(cmd: str) -> None:
                 print(f"Clipboard: {content!r}")
             elif action == "write" and len(sub) > 1:
                 execute_tool("write_clipboard", {"text": sub[1]})
-                print(f"✓ Written to clipboard")
+                print("✓ Written to clipboard")
             else:
                 print("Usage: clipboard read | clipboard write <text>")
 
@@ -180,7 +215,7 @@ def handle_command(cmd: str) -> None:
         elif verb == "switch":
             if rest:
                 ok = execute_tool("switch_window", {"title": rest})
-                print(f"✓ Switched to window: {rest}" if ok else f"✗ Not found: {rest}")
+                print(f"✓ Switched to: {rest}" if ok else f"✗ Not found: {rest}")
             else:
                 print("Usage: switch <partial_title>")
 
@@ -195,7 +230,7 @@ def handle_command(cmd: str) -> None:
             print_help()
 
         else:
-            print(f"Unknown command: '{verb}'. Type 'help' for available commands.")
+            print(f"Unknown command: '{verb}'. Type 'help' for commands.")
 
     except PermissionDeniedError:
         print("✗ Action cancelled by user.")
@@ -211,11 +246,11 @@ def main() -> None:
     config.setup_logging()
     print_banner()
 
-    # Phase 1: Don't require API key yet (no Gemini calls in Phase 1)
-    # config.validate()
+    # Validate config (warns if GEMINI_API_KEY is missing)
+    config.validate()
 
     agent_state.set_mode(AgentMode.IDLE)
-    print("Agent ready. Type 'help' for commands.\n")
+    print("✅ Agent ready. Type 'help' for all commands.\n")
 
     try:
         while True:
