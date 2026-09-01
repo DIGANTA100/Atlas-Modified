@@ -287,9 +287,13 @@ class AtlasOverlay(QWidget):
 
     def _run_task(self, instruction: str) -> None:
         """Launch agent task in a QThread so the GUI stays responsive."""
-        if self._thread and self._thread.isRunning():
-            self._status_label.setText("⚠️ Already running a task. Please wait.")
-            return
+        try:
+            if getattr(self, "_thread", None) and self._thread.isRunning():
+                self._status_label.setText("⚠️ Already running a task. Please wait.")
+                return
+        except RuntimeError:
+            # The C++ object was already deleted, which means it's definitely not running
+            self._thread = None
 
         self._status_label.setText("🤖 Working…")
         self._response_label.hide()
@@ -304,11 +308,21 @@ class AtlasOverlay(QWidget):
         self._worker.status.connect(lambda s: self._status_label.setText(s))
         self._worker.finished.connect(self._on_task_done)
         self._worker.error.connect(self._on_task_error)
+        
+        # Proper cleanup
         self._worker.finished.connect(self._thread.quit)
         self._worker.error.connect(self._thread.quit)
-        self._thread.finished.connect(self._thread.deleteLater)
+        self._thread.finished.connect(self._cleanup_thread)
 
         self._thread.start()
+        
+    def _cleanup_thread(self) -> None:
+        if self._thread:
+            self._thread.deleteLater()
+            self._thread = None
+        if self._worker:
+            self._worker.deleteLater()
+            self._worker = None
 
     def _on_task_done(self, result: str) -> None:
         self._status_label.setText("✅ Done")
