@@ -73,7 +73,21 @@ def _get_computer_tools() -> dict[str, Callable]:
         "list_folder": lambda path: folders.list_folder(path),
         "open_folder": lambda path: folders.open_folder(path),
         "find_file": lambda name, root_dir="~", max_depth=4: search.find_file(name, root_dir, max_depth),
+        # Browser (Playwright)
+        "browser_navigate": lambda url: _get_browser().navigate(url),
+        "browser_click": lambda selector: _get_browser().click(selector),
+        "browser_fill": lambda selector, text: _get_browser().fill(selector, text),
+        "browser_press": lambda selector, key: _get_browser().press_key(selector, key),
+        "browser_get_text": lambda selector="body": _get_browser().get_text(selector),
+        "browser_run_script": lambda script: _get_browser().run_script(script),
+        "browser_close": lambda: _get_browser().close(),
     }
+
+def _get_browser():
+    # Lazy import to avoid Playwright overhead if not used
+    from browser.controller import browser_controller
+    return browser_controller
+
 
 
 # ── Gemini function declaration schemas ───────────────────────────────────────
@@ -438,6 +452,78 @@ GEMINI_TOOL_DECLARATIONS = [
             },
             "required": ["name"]
         }
+    },
+    {
+        "name": "browser_navigate",
+        "description": "Navigate a headless Playwright browser to a URL.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "url": {"type": "string"}
+            },
+            "required": ["url"]
+        }
+    },
+    {
+        "name": "browser_click",
+        "description": "Click an element in the Playwright browser using a CSS selector or text.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector or text (e.g. 'text=Login')"}
+            },
+            "required": ["selector"]
+        }
+    },
+    {
+        "name": "browser_fill",
+        "description": "Fill a text input field in the Playwright browser.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector of the input field"},
+                "text": {"type": "string", "description": "Text to type"}
+            },
+            "required": ["selector", "text"]
+        }
+    },
+    {
+        "name": "browser_press",
+        "description": "Press a keyboard key on a specific element in the Playwright browser.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector"},
+                "key": {"type": "string", "description": "Key name (e.g., 'Enter', 'Escape')"}
+            },
+            "required": ["selector", "key"]
+        }
+    },
+    {
+        "name": "browser_get_text",
+        "description": "Extract text content from the page or a specific element.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "selector": {"type": "string", "description": "CSS selector (defaults to 'body' if omitted)"}
+            }
+        }
+    },
+    {
+        "name": "browser_run_script",
+        "description": "Execute arbitrary Javascript in the Playwright browser.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "script": {"type": "string", "description": "Javascript code to evaluate"}
+            },
+            "required": ["script"]
+        }
+    },
+    {
+        "name": "browser_close",
+        "description": "Close the Playwright browser session.",
+        "parameters": {"type": "object", "properties": {}}
     }
 ]
 
