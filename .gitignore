@@ -1,0 +1,56 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.pyo
+*.pyw
+*.pyc
+.Python
+venv/
+env/
+.venv/
+ENV/
+pip-selfcheck.json
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+*.egg
+*.whl
+MANIFEST
+
+# Logs
+logs/
+*.log
+session_logs/
+
+# Screenshots / tmp captures
+screenshots/
+*.png
+*.jpg
+*.jpeg
+*.bmp
+
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Playwright
+playwright/.cache/
