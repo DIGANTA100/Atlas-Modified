@@ -81,12 +81,23 @@ def _get_computer_tools() -> dict[str, Callable]:
         "browser_get_text": lambda selector="body": _get_browser().get_text(selector),
         "browser_run_script": lambda script: _get_browser().run_script(script),
         "browser_close": lambda: _get_browser().close(),
+        # Vision
+        "vision_find_text": lambda text: _vision_find_text(text),
+        "vision_find_image": lambda template_path: _vision_find_image(template_path),
     }
 
 def _get_browser():
     # Lazy import to avoid Playwright overhead if not used
     from browser.controller import browser_controller
     return browser_controller
+
+def _vision_find_text(text: str):
+    from vision.ocr import find_text_on_screen
+    return find_text_on_screen(text)
+
+def _vision_find_image(template_path: str):
+    from vision.ui_detection import find_image_on_screen
+    return find_image_on_screen(template_path)
 
 
 
@@ -524,6 +535,28 @@ GEMINI_TOOL_DECLARATIONS = [
         "name": "browser_close",
         "description": "Close the Playwright browser session.",
         "parameters": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "vision_find_text",
+        "description": "Find specific text on the screen using OCR and return its X, Y click coordinates.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "text": {"type": "string", "description": "The exact word or phrase to look for"}
+            },
+            "required": ["text"]
+        }
+    },
+    {
+        "name": "vision_find_image",
+        "description": "Find a specific image template/icon on the screen and return its X, Y click coordinates.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "template_path": {"type": "string", "description": "Path to the reference image file"}
+            },
+            "required": ["template_path"]
+        }
     }
 ]
 
