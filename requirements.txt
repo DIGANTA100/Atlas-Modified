@@ -30,17 +30,19 @@ PyAudio>=0.2.14
 # Voice - Text to Speech
 pyttsx3>=2.90
 
-# OCR
+# Vision / OCR
 pytesseract>=0.3.10
-easyocr>=1.7.0
+opencv-python>=4.8.0
+numpy>=1.24.0
 
-# GUI (Phase 9)
-# PySide6>=6.6.0
+# Safety — global hotkey listener
+pynput>=1.7.6
+
+# GUI overlay
+PySide6>=6.6.0
 
 # Utilities
 requests>=2.31.0
-numpy>=1.24.0
-scipy>=1.11.0
 
 # Testing
 pytest>=7.4.0

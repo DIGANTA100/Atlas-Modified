@@ -74,16 +74,22 @@ REDACT_SENSITIVE: bool = _get_bool("REDACT_SENSITIVE", True)
 
 
 def validate() -> None:
-    """Raise an error if critical config values are missing."""
+    """
+    Warn (do not raise) if critical config values are missing.
+    The agent can still be used in manual tool mode without a key.
+    """
     if not GEMINI_API_KEY:
-        raise EnvironmentError(
-            "GEMINI_API_KEY is not set. "
-            "Copy .env.example to .env and add your Google AI Studio API key."
+        import warnings
+        warnings.warn(
+            "\n⚠️  GEMINI_API_KEY is not set in .env\n"
+            "   'do' and 'ask' commands will fail until you add your key.\n"
+            "   Copy .env.example → .env and paste your Google AI Studio key.",
+            stacklevel=2,
         )
 
 
 def setup_logging() -> None:
-    """Configure the root logger."""
+    """Configure the root logger with optional sensitive-data scrubbing."""
     LOG_DIR.mkdir(parents=True, exist_ok=True)
     level = getattr(logging, LOG_LEVEL, logging.INFO)
     logging.basicConfig(
@@ -94,3 +100,6 @@ def setup_logging() -> None:
             logging.FileHandler(LOG_DIR / "atlas.log", encoding="utf-8"),
         ],
     )
+    if REDACT_SENSITIVE:
+        from safety.sensitive_data import install_log_filter
+        install_log_filter()

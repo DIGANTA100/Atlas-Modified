@@ -121,6 +121,10 @@ def handle_command(cmd: str) -> None:
             computer_use_agent.reset()
             print("✓ Conversation context reset.")
 
+        elif verb == "resume":
+            agent_state.reset_stop()
+            print("✅ Emergency stop cleared. Agent resumed.")
+
         # ── Direct tool commands ──────────────────────────────────────────────
         elif verb == "screenshot":
             execute_tool("take_screenshot", {"save": True})
@@ -245,9 +249,14 @@ def main() -> None:
     """Main entry point."""
     config.setup_logging()
     print_banner()
-
-    # Validate config (warns if GEMINI_API_KEY is missing)
     config.validate()
+
+    # ── Start the emergency stop background listener ──────────────────────────
+    from safety.emergency_stop import start_listener, register_stop_callback
+    register_stop_callback(agent_state.trigger_stop)
+    register_stop_callback(lambda: print("⛔ Agent stopped. Type 'resume' to continue."))
+    start_listener()
+    print("🛡️  Emergency stop active: Ctrl+Shift+F12 or move mouse to top-left corner.\n")
 
     agent_state.set_mode(AgentMode.IDLE)
     print("✅ Agent ready. Type 'help' for all commands.\n")
