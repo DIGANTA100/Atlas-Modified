@@ -12,6 +12,7 @@ logger = logging.getLogger(__name__)
 # ── Lazy imports (avoid importing heavy libs at module load time) ──────────────
 def _get_computer_tools() -> dict[str, Callable]:
     from computer import mouse, keyboard, scroll, screen, clipboard, windows
+    from filesystem import files, folders, search
     return {
         # Mouse
         "mouse_move": lambda x, y, duration=0.3: mouse.move(int(x), int(y), duration),
@@ -60,6 +61,18 @@ def _get_computer_tools() -> dict[str, Callable]:
         "show_desktop": lambda: windows.show_desktop(),
         "switch_app": lambda forward=True: windows.switch_app(forward),
         "list_windows": lambda: windows.list_windows(),
+        # Filesystem
+        "create_file": lambda path, content="": files.create_file(path, content),
+        "move_file": lambda src, dest: files.move_file(src, dest),
+        "copy_file": lambda src, dest: files.copy_file(src, dest),
+        "rename_file": lambda src, new_name: files.rename_file(src, new_name),
+        "delete_file": lambda path: files.delete_file(path),
+        "open_file": lambda path: files.open_file(path),
+        "create_folder": lambda path: folders.create_folder(path),
+        "delete_folder": lambda path: folders.delete_folder(path),
+        "list_folder": lambda path: folders.list_folder(path),
+        "open_folder": lambda path: folders.open_folder(path),
+        "find_file": lambda name, root_dir="~", max_depth=4: search.find_file(name, root_dir, max_depth),
     }
 
 
@@ -299,6 +312,133 @@ GEMINI_TOOL_DECLARATIONS = [
         "description": "List all open windows with their titles.",
         "parameters": {"type": "object", "properties": {}},
     },
+    {
+        "name": "create_file",
+        "description": "Create a new file with optional content.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Absolute or relative path to the new file"},
+                "content": {"type": "string", "description": "Optional text content"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "move_file",
+        "description": "Move a file to a new location.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "src": {"type": "string"},
+                "dest": {"type": "string"}
+            },
+            "required": ["src", "dest"]
+        }
+    },
+    {
+        "name": "copy_file",
+        "description": "Copy a file.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "src": {"type": "string"},
+                "dest": {"type": "string"}
+            },
+            "required": ["src", "dest"]
+        }
+    },
+    {
+        "name": "rename_file",
+        "description": "Rename a file in the same directory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "src": {"type": "string"},
+                "new_name": {"type": "string", "description": "Just the new file name, not a full path"}
+            },
+            "required": ["src", "new_name"]
+        }
+    },
+    {
+        "name": "delete_file",
+        "description": "Delete a file.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "open_file",
+        "description": "Open a file using the default Windows application.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "create_folder",
+        "description": "Create a new directory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "delete_folder",
+        "description": "Delete a directory and all its contents recursively.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "list_folder",
+        "description": "List all files and subdirectories in a directory.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "open_folder",
+        "description": "Open a folder in Windows File Explorer.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "find_file",
+        "description": "Search for a file or folder by partial name.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Partial name to search for"},
+                "root_dir": {"type": "string", "description": "Directory to start search from (defaults to ~)"},
+                "max_depth": {"type": "integer", "description": "Maximum folder depth to search"}
+            },
+            "required": ["name"]
+        }
+    }
 ]
 
 
