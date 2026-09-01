@@ -73,10 +73,10 @@ class ComputerUseAgent:
         initial_message = [
             screen_part,
             types.Part.from_text(
-                f"The image above is the current state of the screen.\n\n"
-                f"Your task: {instruction}\n\n"
-                f"Use the available tools to accomplish this task. "
-                f"I will send you an updated screenshot after each action so you can verify progress."
+                text=f"The image above is the current state of the screen.\n\n"
+                     f"Your task: {instruction}\n\n"
+                     f"Use the available tools to accomplish this task. "
+                     f"I will send you an updated screenshot after each action so you can verify progress."
             ),
         ]
 
@@ -109,26 +109,26 @@ class ComputerUseAgent:
                     # Serialize non-string results
                     if not isinstance(result_payload, str):
                         result_payload = str(result_payload)
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"result": result_payload}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"result": result_payload}
+                    ))
                 except PermissionDeniedError:
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"error": "User denied this action."}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"error": "User denied this action."}
+                    ))
                 except ExecutionError as e:
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"error": str(e)}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"error": str(e)}
+                    ))
                 except Exception as e:
                     logger.exception("Unexpected error executing tool %s", tool_name)
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"error": f"Unexpected error: {e}"}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"error": f"Unexpected error: {e}"}
+                    ))
 
             # ── Pause briefly then take verification screenshot ────────────────
             time.sleep(SCREENSHOT_PAUSE)
@@ -138,8 +138,8 @@ class ComputerUseAgent:
             followup_parts = tool_results + [
                 screen_part,
                 types.Part.from_text(
-                    "The image above shows the screen state after your actions. "
-                    "Continue with the next steps or confirm the task is complete."
+                    text="The image above shows the screen state after your actions. "
+                         "Continue with the next steps or confirm the task is complete."
                 ),
             ]
 

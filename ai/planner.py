@@ -7,6 +7,8 @@ Takes a user instruction, queries Gemini, executes tools, and reports back.
 import logging
 from typing import Any
 
+from google.genai import types
+
 from ai import gemini_client
 from tools.executor import execute_tool, ExecutionError, PermissionDeniedError
 from voice.text_to_speech import speak
@@ -73,20 +75,20 @@ def _handle_response_loop(chat: Any, response: Any) -> None:
                 # Execute it locally
                 try:
                     result = execute_tool(tool_name, args)
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"result": result if result is not None else "success"}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"result": result if result is not None else "success"}
+                    ))
                 except PermissionDeniedError:
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"error": "User denied permission to execute this action."}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"error": "User denied permission to execute this action."}
+                    ))
                 except ExecutionError as e:
-                    tool_results.append({
-                        "name": tool_name,
-                        "response": {"error": str(e)}
-                    })
+                    tool_results.append(types.Part.from_function_response(
+                        name=tool_name,
+                        response={"error": str(e)}
+                    ))
             
             # Send the tool execution results back to Gemini
             logger.debug("Sending tool results back to Gemini: %s", tool_results)
