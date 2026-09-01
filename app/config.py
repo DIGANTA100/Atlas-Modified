@@ -38,8 +38,8 @@ def _get_int(key: str, default: int = 0) -> int:
 
 # ─── Gemini ───────────────────────────────────────────────────────────────────
 GEMINI_API_KEY: str = _get("GEMINI_API_KEY")
-GEMINI_TEXT_MODEL: str = _get("GEMINI_TEXT_MODEL", "gemini-2.0-flash")
-GEMINI_VISION_MODEL: str = _get("GEMINI_VISION_MODEL", "gemini-2.0-flash")
+GEMINI_TEXT_MODEL: str = _get("GEMINI_TEXT_MODEL", "gemini-3.6-flash")
+GEMINI_VISION_MODEL: str = _get("GEMINI_VISION_MODEL", "gemini-3.6-flash")
 
 # ─── Voice / TTS ──────────────────────────────────────────────────────────────
 TTS_PROVIDER: str = _get("TTS_PROVIDER", "pyttsx3")
