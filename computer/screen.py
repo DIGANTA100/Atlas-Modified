@@ -79,16 +79,31 @@ def take_screenshot(
 def screenshot_to_bytes(
     region: ScreenRegion | None = None,
     monitor: int = 1,
-    fmt: str = "PNG",
+    max_width: int = 1280,
+    quality: int = 75,
 ) -> bytes:
     """
-    Capture a screenshot and return it as raw bytes (PNG by default).
-    Used for sending to Gemini Vision API.
+    Capture a screenshot and return it as compressed JPEG bytes.
+    Optimized for Gemini Vision API — images are downscaled and compressed
+    to minimize upload time while keeping enough detail for the model.
+
+    Args:
+        max_width:  Downscale to this width if the screen is wider (keeps aspect ratio).
+        quality:    JPEG quality (0-95). 75 is a good balance of quality vs speed.
     """
     img = take_screenshot(region=region, monitor=monitor)
+
+    # Downscale if wider than max_width (most screens are 1920px+)
+    if img.width > max_width:
+        ratio = max_width / img.width
+        new_size = (max_width, int(img.height * ratio))
+        img = img.resize(new_size, Image.LANCZOS)
+
     buf = io.BytesIO()
-    img.save(buf, format=fmt)
-    return buf.getvalue()
+    img.save(buf, format="JPEG", quality=quality, optimize=True)
+    data = buf.getvalue()
+    logger.debug("Screenshot bytes: %d KB (resized to %dx%d)", len(data) // 1024, img.width, img.height)
+    return data
 
 
 def screenshot_to_base64(
